@@ -25,6 +25,7 @@
 
 @interface BAFluidView : UIView
 
+@property(strong, nonatomic) NSArray* gradientColors;
 
 /**
 Changes the fill color of the wave animation

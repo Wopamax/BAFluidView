@@ -31,6 +31,7 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
 
 @property (strong,nonatomic) UIView *rootView;
 
+@property (strong,nonatomic) CAGradientLayer *gradientLayer;
 @property (strong,nonatomic) CAShapeLayer *lineLayer;
 
 @property (strong,nonatomic) NSArray *amplitudeArray;
@@ -175,6 +176,31 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
 
 #pragma mark - Custom Accessors
 
+- (void)setGradientColors:(NSArray *)gradientColors{
+    _gradientColors = gradientColors;
+    self.gradientLayer.locations = [self evenSpacingLocationsForCount:gradientColors.count];
+    self.gradientLayer.colors = [self CGColorsFromUIColors:gradientColors];
+}
+
+- (NSArray *)evenSpacingLocationsForCount:(NSUInteger)count{
+    NSMutableArray *locations = [NSMutableArray new];
+    CGFloat spacing = 1.0 / (count - 1);
+    CGFloat value = 0;
+    while (value < 1) {
+        [locations addObject:@(value)];
+        value += spacing;
+    }
+    return locations;
+}
+
+- (NSArray *)CGColorsFromUIColors:(NSArray *)colors {
+    NSMutableArray *newColors = [NSMutableArray new];
+    for (UIColor *color in [colors reverseObjectEnumerator]) {
+        [newColors addObject:color.CGColor];
+    }
+    return newColors;
+}
+
 - (void)setFillColor:(UIColor *)fillColor{
     _fillColor = fillColor;
     self.lineLayer.fillColor = [fillColor CGColor];
@@ -235,6 +261,9 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
     self.orientation = [[UIDevice currentDevice] orientation];
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     
+    self.gradientLayer = [CAGradientLayer new];
+    self.gradientLayer.anchorPoint = CGPointZero;
+
     // create the wave layer and make it blue
     self.clipsToBounds = YES;
     self.lineLayer = [CAShapeLayer layer];
@@ -257,8 +286,11 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
     self.amplitudeArray = [NSArray arrayWithArray:[self createAmplitudeOptions]];
     
     //creating a linelayer frame
-    self.lineLayer.anchorPoint= CGPointMake(0, 0);
+    self.gradientLayer.anchorPoint= CGPointMake(0, 0);
     CGRect frame = CGRectMake(0, CGRectGetHeight(self.frame), self.finalX, CGRectGetHeight(self.rootView.frame));
+    self.gradientLayer.frame = frame;
+
+    self.lineLayer.anchorPoint= CGPointMake(0, 0);
     self.lineLayer.frame = frame;
     //    self.lineLayer.transform = CATransform3DMakeScale(1.02, 1.02, 1);
     
@@ -292,6 +324,7 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
     }
     
     self.rollLayer.frame = self.frame;
+    self.gradientLayer.frame = self.bounds;
     
     //listen for the device manager
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -335,7 +368,9 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
         if(self.roll){
             [self startTiltAnimation];
         } else {
-            [self.layer addSublayer:self.lineLayer];
+            self.gradientLayer.frame = self.bounds;
+            self.gradientLayer.mask = self.lineLayer;
+            [self.layer addSublayer:self.gradientLayer];
         }
         
         self.animating = YES;
@@ -375,7 +410,7 @@ NSString * const kBAFluidViewCMMotionUpdate = @"BAFluidViewCMMotionUpdate";
     CAKeyframeAnimation *verticalAnimation =
     [CAKeyframeAnimation animationWithKeyPath:@"position.y"];
     float finalPosition;
-    finalPosition = (1.0 - fillPercentage.doubleValue)*CGRectGetHeight(self.frame);
+    finalPosition = (1.0 - fillPercentage.doubleValue)*CGRectGetHeight(self.gradientLayer.frame);
     
     //bit hard to define a hard endpoint with the dynamic waves
     if ([self.fillLevel  isEqual: @1.0]){
